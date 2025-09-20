@@ -154,19 +154,19 @@ public class AirBubbleTracker {
         int minX = chunk.getPos().getMinBlockX();
         int minY = chunk.getMinBuildHeight();
         int minZ = chunk.getPos().getMinBlockZ();
-        int startX = startingPosition.getX() - minX;
-        int startY = startingPosition.getY();
-        int startZ = startingPosition.getZ() - minZ;
+        int startX = Math.max(0, Math.min(15, startingPosition.getX() - minX));
+        int startY = Math.max(minY, Math.min(chunk.getLevel().getMaxBuildHeight() - 1, startingPosition.getY()));
+        int startZ = Math.max(0, Math.min(15, startingPosition.getZ() - minZ));
         int iterations = 0;
 
-        for (int dx = startX; dx < 16; dx++, startX = 0) {
-            for (int dz = startZ; dz < 16; dz++, startZ = 0) {
+        for (int dx = startX; dx < 16; dx++) {
+            for (int dz = startZ; dz < 16; dz++) {
                 int posX = minX + dx;
                 int posZ = minZ + dz;
                 int maxY = chunk.getLevel().getHeight(Heightmap.Types.WORLD_SURFACE, posX, posZ);
-                for (int posY = startY; posY < maxY; posY++, startY = minY, iterations++) {
-                    if (iterations >= MAX_BLOCKS_PER_TICK) { // Limit iterations per tick
-                        return new BlockPos(minX + dx, posY, minZ + dz);
+                for (int posY = startY; posY < maxY; posY++) {
+                    if (iterations >= MAX_BLOCKS_PER_TICK) {
+                        return new BlockPos(posX, posY, posZ); // Resume from this position
                     }
                     BlockPos blockPos = new BlockPos(posX, posY, posZ);
                     BlockState blockState = chunk.getBlockState(blockPos);
@@ -174,9 +174,12 @@ public class AirBubbleTracker {
                     if (airQualityLevel != null) {
                         airBubbleEntries.put(blockPos, airQualityLevel);
                     }
+                    iterations++;
                 }
+                startY = minY; // Reset Y for the next column
             }
+            startZ = 0; // Reset Z for the next row
         }
-        return null;
+        return null; // Chunk fully processed
     }
 }
